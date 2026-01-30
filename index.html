@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule Picker</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ja.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="week-nav">
+        <button id="prevWeek">&#60;</button>
+        <span id="weekLabel">2024/01/01週</span>
+        <button id="nextWeek">&#62;</button>
+        <button id="todayBtn">今日</button>
+      </div>
+      <button class="clear-btn" id="clearBtn">全てをクリア</button>
+    </header>
+    <div class="calendar-wrapper">
+      <div class="calendar" id="calendar">
+        <!-- カレンダー本体はJSで描画 -->
+      </div>
+    </div>
+    <div class="output-area">
+      <div class="output-header">
+        <span class="output-label">選択結果（クリックでコピー）</span>
+        <button class="format-toggle" id="outputFormatToggle">Ja</button>
+      </div>
+      <div class="output-columns">
+        <div class="output-col">
+          <div class="col-header">日本時間 (UTC+09:00)</div>
+          <pre class="output" id="outputJST" tabindex="0"></pre>
+        </div>
+        <div class="output-col">
+          <div class="col-header">
+            <label for="timezoneSelect">他タイムゾーン</label>
+            <select id="timezoneSelect" class="tz-select"></select>
+          </div>
+          <pre class="output" id="outputTZ" tabindex="0"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="version-badge">v1.4</div>
+  <script src="js/app.js"></script>
+</body>
+</html>
