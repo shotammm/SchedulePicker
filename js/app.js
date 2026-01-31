@@ -21,6 +21,8 @@ const EMBEDDED_TIMEZONE_CSV = `UTC_Offset,Timezone
 -2,(UTC-02:00) 協定世界時-02
 -1,(UTC-01:00) アゾレス諸島
 0,(UTC+00:00) 協定世界時
+0,(UTC+00:00) グリニッジ標準時 (イギリス)
+1,(UTC+01:00) イギリス夏時間 (サマータイム)
 1,(UTC+01:00) アムステルダム、ベルリン、ベルン、ローマ、ストックホルム、ウィーン
 2,(UTC+02:00) ヨハネスブルグ
 3,(UTC+03:00) ヘルシンキ、キエフ、リガ、ソフィア、タリン、ビリニュス
@@ -443,6 +445,10 @@ function parseTimezoneCsv(text) {
   }).filter(x => !Number.isNaN(x.offset) && x.label);
 }
 
+function isFrequentTimezone(label) {
+  return label.includes('太平洋標準時') || label.includes('イギリス');
+}
+
 async function loadTimezones() {
   let useEmbedded = location.protocol === 'file:';
   let text = '';
@@ -465,7 +471,10 @@ async function loadTimezones() {
   selectedTimezoneIndex = idx;
   selectedTimezoneOffset = timezoneOptions[idx].offset;
   const sel = document.getElementById('timezoneSelect');
-  sel.innerHTML = timezoneOptions.map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+  sel.innerHTML = timezoneOptions.map((t, i) => {
+    const frequentClass = isFrequentTimezone(t.label) ? ' class="frequent-tz"' : '';
+    return `<option value="${i}"${frequentClass}>${t.label}</option>`;
+  }).join('');
   sel.value = String(selectedTimezoneIndex);
 }
 

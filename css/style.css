@@ -185,6 +185,9 @@ pre.output.copied {
   padding: 4px 8px;
   width: 70%;
 }
+.tz-select option.frequent-tz {
+  font-weight: 700;
+}
 .version-badge {
   position: fixed;
   right: 8px;
