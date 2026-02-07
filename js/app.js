@@ -8,6 +8,7 @@ const TIME_SLOTS = Array.from({length: 48}, (_, i) => {
 // 24時間分（48コマ）全て描画、表示は10時間分（20コマ）分の高さ
 const VISIBLE_SLOT_START = 0; // 表示開始スロット（0=0:00）
 const VISIBLE_SLOT_COUNT = 20; // 10時間分（20コマ）
+const DEFAULT_SCROLL_SLOT = 16; // 8:00
 const JST_UTC_OFFSET = 9;
 const DEFAULT_TZ_LABEL = '(UTC-08:00) 太平洋標準時 (米国およびカナダ)';
 const EMBEDDED_TIMEZONE_CSV = `UTC_Offset,Timezone
@@ -434,6 +435,15 @@ function updateFormatToggleText() {
   const toggle = document.getElementById('outputFormatToggle');
   toggle.textContent = outputFormat;
 }
+function scrollCalendarToSlot(slotIdx) {
+  const wrapper = document.querySelector('.calendar-wrapper');
+  const timeCell = document.querySelector(`.time[data-slot="${slotIdx}"]`);
+  if (!wrapper || !timeCell) return;
+  const header = document.querySelector('.calendar .header');
+  const headerHeight = header ? header.offsetHeight : 0;
+  const targetTop = Math.max(0, timeCell.offsetTop - headerHeight);
+  wrapper.scrollTop = targetTop;
+}
 function parseTimezoneCsv(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length && lines[0].toLowerCase().startsWith('utc_offset')) lines.shift();
@@ -483,4 +493,5 @@ window.onload = async () => {
   updateFormatToggleText();
   await loadTimezones();
   renderAll();
+  scrollCalendarToSlot(DEFAULT_SCROLL_SLOT);
 };
