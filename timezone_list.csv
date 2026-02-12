@@ -1,32 +1,25 @@
-﻿UTC_Offset,Timezone
--9.5,(UTC-09:30) マルキーズ諸島
--8,(UTC-08:00) 太平洋標準時 (米国およびカナダ)
--7,(UTC-07:00) 太平洋標準時 (米国およびカナダ) Daylight saving
--6,(UTC-06:00) 中部標準時 (米国およびカナダ)
--5,(UTC-05:00) 東部標準時 (米国およびカナダ)
--4,(UTC-04:00) 大西洋標準時 (カナダ)
--3,(UTC-03:00) ブエノスアイレス
--2,(UTC-02:00) 協定世界時-02
--1,(UTC-01:00) アゾレス諸島
-0,(UTC+00:00) 協定世界時
-0,(UTC+00:00) グリニッジ標準時 (イギリス)
-1,(UTC+01:00) イギリス夏時間 (サマータイム)
-1,(UTC+01:00) アムステルダム、ベルリン、ベルン、ローマ、ストックホルム、ウィーン
-2,(UTC+02:00) ヨハネスブルグ
-3,(UTC+03:00) ヘルシンキ、キエフ、リガ、ソフィア、タリン、ビリニュス
-5,(UTC+05:00) イスラマバード、カラチ
-5,(UTC+05:00) エカテリンブルグ
-5.5,(UTC+05:30) チェンナイ、コルカタ、ムンバイ、ニューデリー
-5.75,(UTC+05:45) カトマンズ
-6,(UTC+06:00) ダッカ
-6.5,(UTC+06:30) ヤンゴン (ラングーン)
-7,(UTC+07:00) バンコク、ハノイ、ジャカルタ
-8,(UTC+08:00) クアラルンプール、シンガポール
-9,(UTC+09:00) 大阪、札幌、東京
-9.5,(UTC+09:30) アデレード
-10,(UTC+10:00) キャンベラ、メルボルン、シドニー
-11,(UTC+11:00) ソロモン諸島、ニューカレドニア
-12,(UTC+12:00) オークランド、ウェリントン
-12.75,(UTC+12:45) チャタム諸島
-13,(UTC+13:00) サモア
-14,(UTC+14:00) クリスマス島
+UTC_Offset,IANA,Timezone
+-9.5,Pacific/Marquesas,太平洋 / Marquesas (UTC-09:30, DSTなし)
+-8,America/Los_Angeles,北米 / Los Angeles (UTC-08:00, DSTあり)
+-7,America/Denver,北米 / Denver (UTC-07:00, DSTあり)
+-6,America/Chicago,北米 / Chicago (UTC-06:00, DSTあり)
+-5,America/New_York,北米 / New York (UTC-05:00, DSTあり)
+0,Europe/London,欧州 / London (UTC+00:00, DSTあり)
+1,Europe/Berlin,欧州 / Berlin (UTC+01:00, DSTあり)
+2,Africa/Johannesburg,アフリカ / Johannesburg (UTC+02:00, DSTなし)
+3,Europe/Helsinki,欧州 / Helsinki (UTC+03:00, DSTあり)
+5,Asia/Karachi,アジア / Karachi (UTC+05:00, DSTなし)
+5.5,Asia/Kolkata,アジア / Kolkata (UTC+05:30, DSTなし)
+5.75,Asia/Kathmandu,アジア / Kathmandu (UTC+05:45, DSTなし)
+6,Asia/Dhaka,アジア / Dhaka (UTC+06:00, DSTなし)
+6.5,Asia/Yangon,アジア / Yangon (UTC+06:30, DSTなし)
+7,Asia/Bangkok,アジア / Bangkok (UTC+07:00, DSTなし)
+8,Asia/Singapore,アジア / Singapore (UTC+08:00, DSTなし)
+9,Asia/Tokyo,アジア / Tokyo (UTC+09:00, DSTなし)
+9.5,Australia/Adelaide,オセアニア / Adelaide (UTC+09:30, DSTあり)
+10,Australia/Sydney,オセアニア / Sydney (UTC+10:00, DSTあり)
+11,Pacific/Noumea,太平洋 / Noumea (UTC+11:00, DSTなし)
+12,Pacific/Auckland,太平洋 / Auckland (UTC+12:00, DSTあり)
+12.75,Pacific/Chatham,太平洋 / Chatham (UTC+12:45, DSTあり)
+13,Pacific/Apia,太平洋 / Apia (UTC+13:00, DSTなし)
+14,Pacific/Kiritimati,太平洋 / Kiritimati (UTC+14:00, DSTなし)
