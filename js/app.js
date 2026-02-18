@@ -5,6 +5,7 @@ const TIME_SLOTS = Array.from({length: 48}, (_, i) => {
   const m = i % 2 === 0 ? '00' : '30';
   return `${h}:${m}`;
 });
+const EMPHASIZED_SLOT_INDEXES = new Set([12, 24, 36]); // 6:00, 12:00, 18:00
 // 24時間分（48コマ）全て描画、表示は10時間分（20コマ）分の高さ
 const VISIBLE_SLOT_START = 0; // 表示開始スロット（0=0:00）
 const VISIBLE_SLOT_COUNT = 20; // 10時間分（20コマ）
@@ -88,16 +89,17 @@ function renderCalendar() {
     html += `<div class="header${headerClass ? ` ${headerClass}` : ''}" data-day="${i}">${d.format('M/D')}(${DAYS[i]})</div>`;
   }
   for (let t = 0; t < 48; t++) {
+    const emphasizedClass = EMPHASIZED_SLOT_INDEXES.has(t) ? ' emphasized-line' : '';
     let timeClass = '';
     if (hoverCell && hoverCell.slotIdx === t) timeClass = 'hover';
-    html += `<div class="time ${timeClass}" data-slot="${t}">${TIME_SLOTS[t]}</div>`;
+    html += `<div class="time ${timeClass}${emphasizedClass}" data-slot="${t}">${TIME_SLOTS[t]}</div>`;
     for (let d = 0; d < 7; d++) {
       const date = baseMonday.add(d, 'day').format('YYYY-MM-DD');
       let cellClass = '';
       if (selectedSlots.some(s => s.date === date && s.slot === t)) cellClass = 'selected';
       if (hoverCell && hoverCell.dayIdx === d && hoverCell.slotIdx === t) cellClass += ' hover';
       if (isDragging && isCellInCurrentRect(d, t)) cellClass += (cellClass ? ' ' : '') + 'preview';
-      html += `<div class="cell${cellClass ? ` ${cellClass}` : ''}" data-day="${d}" data-slot="${t}"></div>`;
+      html += `<div class="cell${cellClass ? ` ${cellClass}` : ''}${emphasizedClass}" data-day="${d}" data-slot="${t}"></div>`;
     }
   }
   cal.innerHTML = html;

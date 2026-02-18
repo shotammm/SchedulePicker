@@ -114,6 +114,10 @@ header {
 .calendar .cell.preview {
   background: rgba(25, 118, 210, 0.3); /* 半透明のプレビュー */
 }
+.calendar .time.emphasized-line,
+.calendar .cell.emphasized-line {
+  border-top: 2px solid #d0d0d0;
+}
 .calendar .cell:last-child,
 .calendar .time:last-child {
   border-right: none;
