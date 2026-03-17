@@ -103,6 +103,10 @@
     .calendar .time.hover {
       background: #e3f2fd;
     }
+    .calendar .time.major {
+      font-weight: bold;
+      box-shadow: inset 0 2px 0 #cfd8dc;
+    }
     .calendar .cell {
       min-height: 28px;
       border-bottom: 1px solid #eee;
@@ -121,6 +125,9 @@
     }
     .calendar .cell.preview {
       background: rgba(25, 118, 210, 0.3); /* 半透明のプレビュー */
+    }
+    .calendar .cell.major {
+      box-shadow: inset 0 2px 0 #cfd8dc;
     }
     .calendar .cell:last-child,
     .calendar .time:last-child {
@@ -174,16 +181,40 @@
     }
     .output-columns {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
       gap: 16px;
     }
+    .output-col {
+      display: flex;
+      flex-direction: column;
+    }
     .output-col .col-header {
-      font-weight: bold;
       margin-bottom: 6px;
+      display: grid;
+      grid-template-rows: auto auto;
+      row-gap: 6px;
+    }
+    .col-top {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      min-height: 20px;
+    }
+    .col-top.placeholder {
+      visibility: hidden;
+    }
+    .col-main {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      min-height: 32px;
+    }
+    .col-title {
+      font-weight: bold;
+      min-height: 1.5em;
+      display: flex;
+      align-items: center;
     }
     .tz-select {
       font-size: 0.95em;
@@ -191,7 +222,34 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       padding: 4px 8px;
-      width: 70%;
+      width: min(100%, 26rem);
+      min-width: 0;
+      flex: 1 1 16rem;
+    }
+    .tz-top {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-height: 20px;
+    }
+    .dst-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9em;
+      font-weight: normal;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .dst-toggle input {
+      margin: 0;
+    }
+    .tz-meta {
+      font-size: 0.85em;
+      font-weight: normal;
+      color: #666;
+      white-space: nowrap;
     }
     .version-badge {
       position: fixed;
@@ -209,6 +267,23 @@
     @media (max-width: 700px) {
       .container { padding: 8px; }
       .calendar { font-size: 0.9em; }
+      .output-columns { grid-template-columns: 1fr; }
+      .col-main {
+        min-height: 0;
+        flex-wrap: wrap;
+      }
+      .tz-select {
+        width: 100%;
+        flex-basis: 100%;
+      }
+      .tz-top {
+        flex-wrap: wrap;
+      }
+      .tz-meta {
+        width: 100%;
+        white-space: normal;
+        text-align: right;
+      }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
@@ -237,20 +312,38 @@
       </div>
       <div class="output-columns">
         <div class="output-col">
-          <div class="col-header">日本時間 (UTC+09:00)</div>
+          <div class="col-header">
+            <div class="col-top placeholder" aria-hidden="true"></div>
+            <div class="col-main">
+              <div class="col-title">日本時間 (UTC+09:00)</div>
+            </div>
+          </div>
           <pre class="output" id="outputJST" tabindex="0"></pre>
         </div>
         <div class="output-col">
           <div class="col-header">
-            <label for="timezoneSelect">他タイムゾーン</label>
-            <select id="timezoneSelect" class="tz-select"></select>
+            <div class="col-top">
+              <div class="tz-top">
+                <label for="timezoneDst" class="dst-toggle">
+                  <input type="checkbox" id="timezoneDst">
+                  DST
+                  <span class="tz-meta" id="timezoneMeta"></span>
+                </label>
+              </div>
+            </div>
+            <div class="col-main">
+              <div class="col-title">
+                <label for="timezoneSelect">他タイムゾーン</label>
+              </div>
+              <select id="timezoneSelect" class="tz-select"></select>
+            </div>
           </div>
           <pre class="output" id="outputTZ" tabindex="0"></pre>
         </div>
       </div>
     </div>
   </div>
-  <div class="version-badge">v1.4</div>
+  <div class="version-badge">v1.5</div>
   <script>
     // --- 定数 ---
     const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
@@ -264,6 +357,8 @@
     const VISIBLE_SLOT_COUNT = 20; // 10時間分（20コマ）
     const JST_UTC_OFFSET = 9;
     const DEFAULT_TZ_LABEL = '(UTC-08:00) 太平洋標準時 (米国およびカナダ)';
+    const UK_TZ_LABEL = '(UTC+00:00) 協定世界時';
+    const DST_SUFFIX_PATTERN = /\s+Daylight saving$/i;
     const EMBEDDED_TIMEZONE_CSV = `UTC_Offset,Timezone
 -9.5,(UTC-09:30) マルキーズ諸島
 -8,(UTC-08:00) 太平洋標準時 (米国およびカナダ)
@@ -302,9 +397,9 @@
     let selectedSlots = []; // [{date: 'YYYY-MM-DD', slot: number}]
     let hoverCell = null; // {dayIdx, slotIdx}
     let outputFormat = localStorage.getItem('schedulepicker_output_format') || 'JP'; // JP or EN
-    let timezoneOptions = []; // [{offset:number,label:string}]
+    let timezoneOptions = []; // [{offset:number,label:string,dstOffset:number|null}]
     let selectedTimezoneIndex = 0;
-    let selectedTimezoneOffset = -8; // 既定: 太平洋標準時
+    let selectedTimezoneUsesDst = localStorage.getItem('schedulepicker_timezone_dst') === '1';
     // ドラッグ選択の状態
     let isDragging = false;
     let dragStart = null;   // {dayIdx, slotIdx}
@@ -346,15 +441,19 @@
         html += `<div class="header${headerClass?` ${headerClass}`:''}" data-day="${i}">${d.format('M/D')}(${DAYS[i]})</div>`;
       }
       for(let t=0;t<48;t++) {
-        let timeClass = '';
-        if(hoverCell && hoverCell.slotIdx === t) timeClass = 'hover';
+        let timeClasses = [];
+        if(t % 12 === 0) timeClasses.push('major');
+        if(hoverCell && hoverCell.slotIdx === t) timeClasses.push('hover');
+        const timeClass = timeClasses.join(' ');
         html += `<div class="time ${timeClass}" data-slot="${t}">${TIME_SLOTS[t]}</div>`;
         for(let d=0;d<7;d++) {
           const date = baseMonday.add(d, 'day').format('YYYY-MM-DD');
-          let cellClass = '';
-          if(selectedSlots.some(s => s.date === date && s.slot === t)) cellClass = 'selected';
-          if(hoverCell && hoverCell.dayIdx === d && hoverCell.slotIdx === t) cellClass += ' hover';
-          if(isDragging && isCellInCurrentRect(d, t)) cellClass += (cellClass? ' ' : '') + 'preview';
+          let cellClasses = [];
+          if(t % 12 === 0) cellClasses.push('major');
+          if(selectedSlots.some(s => s.date === date && s.slot === t)) cellClasses.push('selected');
+          if(hoverCell && hoverCell.dayIdx === d && hoverCell.slotIdx === t) cellClasses.push('hover');
+          if(isDragging && isCellInCurrentRect(d, t)) cellClasses.push('preview');
+          const cellClass = cellClasses.join(' ');
           html += `<div class="cell${cellClass?` ${cellClass}`:''}" data-day="${d}" data-slot="${t}"></div>`;
         }
       }
@@ -363,6 +462,7 @@
     function renderOutputs() {
       const outJ = document.getElementById('outputJST');
       const outT = document.getElementById('outputTZ');
+      updateTimezoneMeta();
       if(selectedSlots.length===0) { outJ.textContent = ''; outT.textContent = ''; return; }
       const jstLines = buildJstLines();
       const tzLines = buildTzLines();
@@ -405,7 +505,7 @@
     }
 
     function buildTzLines() {
-      const deltaMinutes = Math.round((selectedTimezoneOffset - JST_UTC_OFFSET) * 60);
+      const deltaMinutes = Math.round((getEffectiveTimezoneOffset() - JST_UTC_OFFSET) * 60);
       // すべての選択スロットをターゲットTZの日時に変換
       let byDate = {}; // dateStr -> array of dayjs
       selectedSlots.forEach(s => {
@@ -476,6 +576,39 @@
       h = h%12||12;
       return `${h}:${m}${ampm}`;
     }
+    function getEffectiveTimezoneOffset() {
+      const option = timezoneOptions[selectedTimezoneIndex];
+      if(!option) return JST_UTC_OFFSET;
+      if(selectedTimezoneUsesDst) {
+        return option.dstOffset != null ? option.dstOffset : option.offset + 1;
+      }
+      return option.offset;
+    }
+    function formatUtcOffset(offset) {
+      const sign = offset >= 0 ? '+' : '-';
+      const abs = Math.abs(offset);
+      const hour = Math.floor(abs);
+      const minute = Math.round((abs - hour) * 60);
+      return `${sign}${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+    function isPreferredTimezoneLabel(label) {
+      return label === DEFAULT_TZ_LABEL || label === UK_TZ_LABEL;
+    }
+    function updateTimezoneMeta() {
+      const option = timezoneOptions[selectedTimezoneIndex];
+      const checkbox = document.getElementById('timezoneDst');
+      const meta = document.getElementById('timezoneMeta');
+      if(!checkbox || !meta) return;
+      if(!option) {
+        checkbox.checked = false;
+        checkbox.disabled = true;
+        meta.textContent = '';
+        return;
+      }
+      checkbox.checked = selectedTimezoneUsesDst;
+      checkbox.disabled = false;
+      meta.textContent = `UTC${formatUtcOffset(getEffectiveTimezoneOffset())} / ${checkbox.checked ? 'DST ON' : 'DST OFF'}`;
+    }
     function bindEvents() {
       document.getElementById('prevWeek').onclick = ()=>{
         baseMonday = baseMonday.subtract(7,'day');
@@ -511,9 +644,17 @@
       document.getElementById('outputJST').onclick = ()=> onCopyById('outputJST');
       document.getElementById('outputTZ').onclick = ()=> onCopyById('outputTZ');
       const tzSel = document.getElementById('timezoneSelect');
+      const tzDst = document.getElementById('timezoneDst');
       tzSel.onchange = ()=>{
         selectedTimezoneIndex = +tzSel.value;
-        selectedTimezoneOffset = timezoneOptions[selectedTimezoneIndex].offset;
+        localStorage.setItem('schedulepicker_timezone_dst', selectedTimezoneUsesDst ? '1' : '0');
+        updateTimezoneMeta();
+        renderOutputs();
+      };
+      tzDst.onchange = ()=>{
+        selectedTimezoneUsesDst = tzDst.checked;
+        localStorage.setItem('schedulepicker_timezone_dst', selectedTimezoneUsesDst ? '1' : '0');
+        updateTimezoneMeta();
         renderOutputs();
       };
       window.onbeforeunload = ()=>{
@@ -680,12 +821,32 @@
     function parseTimezoneCsv(text) {
       const lines = text.trim().split(/\r?\n/);
       if(lines.length && lines[0].toLowerCase().startsWith('utc_offset')) lines.shift();
-      return lines.filter(Boolean).map(line => {
+      const options = [];
+      const optionMap = new Map();
+      const getOrCreateOption = (label) => {
+        if(optionMap.has(label)) return optionMap.get(label);
+        const option = { offset: null, label, dstOffset: null };
+        optionMap.set(label, option);
+        options.push(option);
+        return option;
+      };
+      lines.filter(Boolean).forEach(line => {
         const idx = line.indexOf(',');
         const offStr = line.slice(0, idx);
-        const label = line.slice(idx+1).trim();
-        return { offset: parseFloat(offStr), label };
-      }).filter(x=>!Number.isNaN(x.offset) && x.label);
+        const rawLabel = line.slice(idx+1).trim();
+        const offset = parseFloat(offStr);
+        if(Number.isNaN(offset) || !rawLabel) return;
+        if(DST_SUFFIX_PATTERN.test(rawLabel)) {
+          const label = rawLabel.replace(DST_SUFFIX_PATTERN, '').trim();
+          const option = getOrCreateOption(label);
+          option.dstOffset = offset;
+          if(option.offset == null) option.offset = offset - 1;
+          return;
+        }
+        const option = getOrCreateOption(rawLabel);
+        if(option.offset == null) option.offset = offset;
+      });
+      return options.filter(option => !Number.isNaN(option.offset) && option.label);
     }
 
     async function loadTimezones() {
@@ -708,10 +869,10 @@
       let idx = timezoneOptions.findIndex(t => t.label === DEFAULT_TZ_LABEL);
       if(idx < 0) idx = 0;
       selectedTimezoneIndex = idx;
-      selectedTimezoneOffset = timezoneOptions[idx].offset;
       const sel = document.getElementById('timezoneSelect');
-      sel.innerHTML = timezoneOptions.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('');
+      sel.innerHTML = timezoneOptions.map((t,i)=>`<option value="${i}"${isPreferredTimezoneLabel(t.label) ? ' style="font-weight:700;"' : ''}>${t.label}</option>`).join('');
       sel.value = String(selectedTimezoneIndex);
+      updateTimezoneMeta();
     }
 
     window.onload = async ()=>{
