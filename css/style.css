@@ -211,6 +211,7 @@ pre.output.copied {
   display: grid;
   grid-template-rows: auto auto;
   row-gap: 6px;
+  position: relative;
 }
 
 .col-top {
@@ -218,6 +219,8 @@ pre.output.copied {
   align-items: center;
   justify-content: flex-end;
   min-height: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .col-top.placeholder {
@@ -230,6 +233,8 @@ pre.output.copied {
   justify-content: space-between;
   gap: 8px;
   min-height: 32px;
+  position: relative;
+  z-index: 2;
 }
 
 .col-title {
@@ -240,6 +245,7 @@ pre.output.copied {
 }
 
 .tz-select {
+  display: block;
   font-size: 0.95em;
   background: #fff;
   border: 1px solid #ccc;
@@ -248,6 +254,9 @@ pre.output.copied {
   width: min(100%, 26rem);
   min-width: 0;
   flex: 1 1 16rem;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .tz-select option.frequent-tz {
@@ -260,6 +269,7 @@ pre.output.copied {
   justify-content: flex-end;
   gap: 8px;
   min-height: 20px;
+  max-width: 100%;
 }
 
 .dst-toggle {
@@ -270,6 +280,7 @@ pre.output.copied {
   font-weight: normal;
   white-space: nowrap;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .dst-toggle input {

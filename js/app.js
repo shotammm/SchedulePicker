@@ -481,17 +481,26 @@ function parseTimezoneCsv(text) {
     .filter(Boolean)
     .map((line) => {
       const parts = line.split(",");
-      if (parts.length < 3) return null;
-      const [offStr, iana, ...labelParts] = parts;
+      if (parts.length < 2) return null;
+      if (parts.length >= 3) {
+        const [offStr, iana, ...labelParts] = parts;
+        const offset = parseFloat(offStr);
+        const label = labelParts.join(",").trim();
+        return { offset, iana: iana.trim(), label };
+      }
+      const [offStr, label] = parts;
       const offset = parseFloat(offStr);
-      const label = labelParts.join(",").trim();
-      return { offset, iana: iana.trim(), label };
+      return { offset, iana: "", label: label.trim() };
     })
-    .filter((x) => x && !Number.isNaN(x.offset) && x.iana && x.label);
+    .filter((x) => x && !Number.isNaN(x.offset) && x.label);
 }
 
-function isFrequentTimezone(iana) {
-  return new Set(["Asia/Tokyo", "Europe/London", "America/Los_Angeles"]).has(iana);
+function isPreferredTimezone(option) {
+  if (!option) return false;
+  if (option.iana === "America/Los_Angeles" || option.label.includes("Los Angeles") || option.label.includes("太平洋標準時")) {
+    return true;
+  }
+  return option.offset === 0;
 }
 
 async function loadTimezones() {
@@ -511,13 +520,16 @@ async function loadTimezones() {
   }
   if (useEmbedded) text = EMBEDDED_TIMEZONE_CSV;
   timezoneOptions = parseTimezoneCsv(text);
-  let idx = timezoneOptions.findIndex((t) => t.iana === DEFAULT_TZ_IANA);
+  let idx = timezoneOptions.findIndex(
+    (t) => t.iana === DEFAULT_TZ_IANA || t.label.includes("Los Angeles") || t.label.includes("太平洋標準時")
+  );
   if (idx < 0) idx = 0;
   selectedTimezoneIndex = idx;
   const sel = document.getElementById("timezoneSelect");
   sel.innerHTML = timezoneOptions
-    .map((t, i) => `<option value="${i}"${isFrequentTimezone(t.iana) ? ' class="frequent-tz"' : ""}>${t.label}</option>`)
+    .map((t, i) => `<option value="${i}"${isPreferredTimezone(t) ? ' class="frequent-tz"' : ""}>${t.label}</option>`)
     .join("");
+  sel.selectedIndex = idx;
   sel.value = String(selectedTimezoneIndex);
   updateTimezoneMeta();
 }
