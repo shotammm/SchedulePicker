@@ -265,26 +265,12 @@ pre.output.copied {
 
 .tz-top {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 2px;
   min-height: 20px;
   max-width: 100%;
-}
-
-.dst-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.9em;
-  font-weight: normal;
-  white-space: nowrap;
-  cursor: pointer;
-  max-width: 100%;
-}
-
-.dst-toggle input {
-  margin: 0;
 }
 
 .tz-meta {
@@ -292,6 +278,12 @@ pre.output.copied {
   font-weight: normal;
   color: #666;
   white-space: nowrap;
+}
+
+.tz-transition-note {
+  font-size: 0.8em;
+  color: #8a5a00;
+  text-align: right;
 }
 
 .version-badge {
