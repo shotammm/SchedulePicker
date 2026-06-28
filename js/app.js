@@ -1,3 +1,12 @@
+import {
+  buildTargetTimezoneLines,
+  getDisplayedWeekTimezoneMeta,
+  getResolvedTimeZone,
+  getTimezoneOptionByIana,
+  parseTimezoneCsv,
+} from "./timezone.js";
+
+const dayjs = window.dayjs;
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
   const h = String(Math.floor(i / 2)).padStart(2, "0");
@@ -6,7 +15,6 @@ const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
 });
 const EMPHASIZED_SLOT_INDEXES = new Set([12, 24, 36]);
 const DEFAULT_SCROLL_SLOT = 16;
-const JST_UTC_OFFSET = 9;
 const DEFAULT_TZ_IANA = "America/Los_Angeles";
 const EMBEDDED_TIMEZONE_CSV = `UTC_Offset,IANA,Timezone
 -9.5,Pacific/Marquesas,北米 / Marquesas (UTC-09:30)
@@ -40,8 +48,10 @@ let selectedSlots = [];
 let hoverCell = null;
 let outputFormat = localStorage.getItem("schedulepicker_output_format") || "JP";
 let timezoneOptions = [];
-let selectedTimezoneIndex = 0;
-let selectedTimezoneUsesDst = localStorage.getItem("schedulepicker_timezone_dst") === "1";
+let selectedTimezoneIana = getResolvedTimeZone(
+  localStorage.getItem("schedulepicker_timezone_iana") || DEFAULT_TZ_IANA,
+  DEFAULT_TZ_IANA,
+);
 let isDragging = false;
 let dragStart = null;
 let dragCurrent = null;
@@ -107,7 +117,7 @@ function renderOutputs() {
     return;
   }
   outJ.textContent = buildJstLines().join("\n");
-  outT.textContent = buildTzLines().join("\n");
+  outT.textContent = buildTargetTimezoneLines(selectedSlots, selectedTimezoneIana, outputFormat).join("\n");
 }
 
 function buildJstLines() {
@@ -129,47 +139,6 @@ function buildJstLines() {
       } else {
         const dateStr = formatDateLabel(d);
         lines.push(`${dateStr} ${segs.join(", ")}`);
-      }
-    });
-  return lines;
-}
-
-function buildTzLines() {
-  const deltaMinutes = Math.round((getEffectiveTimezoneOffset() - JST_UTC_OFFSET) * 60);
-  const byDate = {};
-  selectedSlots.forEach((s) => {
-    const h = Math.floor(s.slot / 2);
-    const m = s.slot % 2 === 0 ? 0 : 30;
-    const dtJ = dayjs(s.date).hour(h).minute(m).second(0).millisecond(0);
-    const dtT = dtJ.add(deltaMinutes, "minute");
-    const dateStr = dtT.format("YYYY-MM-DD");
-    if (!byDate[dateStr]) byDate[dateStr] = [];
-    byDate[dateStr].push(dtT);
-  });
-  const lines = [];
-  Object.entries(byDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .forEach(([dateStr, arr]) => {
-      arr.sort((a, b) => a.valueOf() - b.valueOf());
-      const ranges = [];
-      let start = arr[0];
-      let prev = arr[0];
-      for (let i = 1; i <= arr.length; i++) {
-        if (arr[i] && arr[i].diff(prev, "minute") === 30) {
-          prev = arr[i];
-        } else {
-          ranges.push([start, prev.add(30, "minute")]);
-          start = arr[i];
-          prev = arr[i];
-        }
-      }
-      const segs = ranges.map(([s, e]) => `${formatTimeFromDate(s, outputFormat)}-${formatTimeFromDate(e, outputFormat)}`);
-      const d = dayjs(dateStr);
-      if (outputFormat === "JP") {
-        lines.push(`${d.format("M/D(ddd)")} ${segs.join(", ")}`);
-      } else {
-        const dateLabel = formatDateLabel(d);
-        lines.push(`${dateLabel} ${segs.join(", ")}`);
       }
     });
   return lines;
@@ -203,11 +172,6 @@ function formatSlotTime(s, e, format) {
   return format === "JP" ? `${start}-${end}` : `${to12h(start)}-${to12h(end)}`;
 }
 
-function formatTimeFromDate(dt, format) {
-  const t = `${dt.hour()}:${String(dt.minute()).padStart(2, "0")}`;
-  return format === "JP" ? t : to12h(t);
-}
-
 function slotToTime(idx) {
   const h = Math.floor(idx / 2);
   const m = idx % 2 === 0 ? "00" : "30";
@@ -222,26 +186,20 @@ function to12h(t) {
   return `${h}:${m}${ampm}`;
 }
 
-function getEffectiveTimezoneOffset() {
-  const option = timezoneOptions[selectedTimezoneIndex];
-  if (!option) return JST_UTC_OFFSET;
-  return option.offset + (selectedTimezoneUsesDst ? 1 : 0);
-}
-
-function formatUtcOffset(offset) {
-  const sign = offset >= 0 ? "+" : "-";
-  const abs = Math.abs(offset);
-  const hour = Math.floor(abs);
-  const minute = Math.round((abs - hour) * 60);
-  return `${sign}${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
 function updateTimezoneMeta() {
-  const checkbox = document.getElementById("timezoneDst");
   const meta = document.getElementById("timezoneMeta");
-  if (!checkbox || !meta) return;
-  checkbox.checked = selectedTimezoneUsesDst;
-  meta.textContent = `UTC${formatUtcOffset(getEffectiveTimezoneOffset())} / ${checkbox.checked ? "DST ON" : "DST OFF"}`;
+  const note = document.getElementById("timezoneTransitionNote");
+  if (!meta || !note) return;
+
+  const weekMeta = getDisplayedWeekTimezoneMeta(
+    baseMonday.format("YYYY-MM-DD"),
+    selectedTimezoneIana,
+    7,
+    DEFAULT_TZ_IANA,
+  );
+
+  meta.textContent = weekMeta.offsetLabel;
+  note.textContent = weekMeta.hasTransition ? "この週は夏時間切替を含みます" : "";
 }
 
 function bindEvents() {
@@ -285,14 +243,11 @@ function bindEvents() {
   document.getElementById("outputTZ").onclick = () => onCopyById("outputTZ");
 
   const tzSel = document.getElementById("timezoneSelect");
-  const tzDst = document.getElementById("timezoneDst");
   tzSel.onchange = () => {
-    selectedTimezoneIndex = +tzSel.value;
-    renderOutputs();
-  };
-  tzDst.onchange = () => {
-    selectedTimezoneUsesDst = tzDst.checked;
-    localStorage.setItem("schedulepicker_timezone_dst", selectedTimezoneUsesDst ? "1" : "0");
+    const option = timezoneOptions[Number(tzSel.value)];
+    if (!option) return;
+    selectedTimezoneIana = option.iana;
+    localStorage.setItem("schedulepicker_timezone_iana", selectedTimezoneIana);
     renderOutputs();
   };
 
@@ -474,27 +429,6 @@ function scrollCalendarToSlot(slotIdx) {
   wrapper.scrollTop = Math.max(0, timeCell.offsetTop - headerHeight);
 }
 
-function parseTimezoneCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length && lines[0].toLowerCase().startsWith("utc_offset")) lines.shift();
-  return lines
-    .filter(Boolean)
-    .map((line) => {
-      const parts = line.split(",");
-      if (parts.length < 2) return null;
-      if (parts.length >= 3) {
-        const [offStr, iana, ...labelParts] = parts;
-        const offset = parseFloat(offStr);
-        const label = labelParts.join(",").trim();
-        return { offset, iana: iana.trim(), label };
-      }
-      const [offStr, label] = parts;
-      const offset = parseFloat(offStr);
-      return { offset, iana: "", label: label.trim() };
-    })
-    .filter((x) => x && !Number.isNaN(x.offset) && x.label);
-}
-
 function isPreferredTimezone(option) {
   if (!option) return false;
   if (option.iana === "America/Los_Angeles" || option.label.includes("Los Angeles") || option.label.includes("太平洋標準時")) {
@@ -520,17 +454,24 @@ async function loadTimezones() {
   }
   if (useEmbedded) text = EMBEDDED_TIMEZONE_CSV;
   timezoneOptions = parseTimezoneCsv(text);
-  let idx = timezoneOptions.findIndex(
-    (t) => t.iana === DEFAULT_TZ_IANA || t.label.includes("Los Angeles") || t.label.includes("太平洋標準時")
+
+  if (!getTimezoneOptionByIana(timezoneOptions, selectedTimezoneIana)) {
+    selectedTimezoneIana = getTimezoneOptionByIana(timezoneOptions, DEFAULT_TZ_IANA)?.iana ?? timezoneOptions[0]?.iana ?? "";
+    if (selectedTimezoneIana) {
+      localStorage.setItem("schedulepicker_timezone_iana", selectedTimezoneIana);
+    }
+  }
+
+  const selectedIndex = Math.max(
+    timezoneOptions.findIndex((option) => option.iana === selectedTimezoneIana),
+    0,
   );
-  if (idx < 0) idx = 0;
-  selectedTimezoneIndex = idx;
   const sel = document.getElementById("timezoneSelect");
   sel.innerHTML = timezoneOptions
     .map((t, i) => `<option value="${i}"${isPreferredTimezone(t) ? ' class="frequent-tz"' : ""}>${t.label}</option>`)
     .join("");
-  sel.selectedIndex = idx;
-  sel.value = String(selectedTimezoneIndex);
+  sel.selectedIndex = selectedIndex;
+  sel.value = String(selectedIndex);
   updateTimezoneMeta();
 }
 
